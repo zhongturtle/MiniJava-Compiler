@@ -1,0 +1,140 @@
+PARSER_BEGIN(MiniJava)
+
+import java.io.*;
+
+public class MiniJava {
+  public static void main(String args[]) throws ParseException, IOException {
+    MiniJava parser = new MiniJava(new FileInputStream(args[0]));
+    parser.Program();
+  }
+}
+
+PARSER_END(MiniJava)
+
+SKIP :
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+|  <"//" (~["\n","\r"])* ("\n" | "\r" | "\r\n")>
+|  <"/*" (~["*"])* "*" ("*" | ~["*","/"] (~["*"])* "*")* "/">
+}
+
+TOKEN :
+{
+  <CLASS: "class">
+| <PUBLIC: "public">
+| <STATIC: "static">
+| <VOID: "void">
+| <MAIN: "main">
+| <STRING: "String">
+| <EXTENDS: "extends">
+| <RETURN: "return">
+| <IF: "if">
+| <ELSE: "else">
+| <WHILE: "while">
+| <PRINT: "System.out.println">
+| <LENGTH: "length">
+| <NEW: "new">
+| <THIS: "this">
+| <TYPE_INT: "int">
+| <TYPE_BOOL: "boolean">
+| <INTEGER_LITERAL: (["0"-"9"])+>
+| <BOOLEAN_LITERAL: "true"|"false">
+| <OPERATOR: "&&"|"<"|"+"|"-"|"*">
+| <IDENTIFIER: ["a"-"z","A"-"Z"](["a"-"z","A"-"Z","0"-"9", "_"])*>
+}
+
+void Program():
+{}
+{
+  MainClass()
+  (ClassDecl())*
+  <EOF>
+}
+
+void MainClass():
+{}
+{
+  <CLASS> Identifier()
+  "{"
+    <PUBLIC> <STATIC> <VOID> <MAIN> "(" <STRING> "[" "]" Identifier() ")"
+    "{"
+       Statement()
+    "}"
+  "}"
+}
+
+void ClassDecl():
+{}
+{
+  <CLASS> Identifier() [<EXTENDS> Identifier()]
+  "{"
+    (VarDecl())*
+    (MethodDecl())*
+  "}"
+}
+
+void MethodDecl():
+{}
+{
+  <PUBLIC> Type() Identifier() "(" [Type() Identifier() ("," Type() Identifier())*] ")"
+  "{"
+    (LOOKAHEAD(2) VarDecl())*
+    (Statement())*
+    <RETURN> Exp() ";"
+  "}"
+}
+
+void VarDecl():
+{}
+{
+  Type() Identifier() ";"  
+}
+
+void Type():
+{}
+{
+  (<TYPE_INT> ["[" "]"])
+| <TYPE_BOOL>
+| Identifier()
+}
+
+void Statement():
+{}
+{
+  ("{" (Statement())* "}")
+| (<IF> "(" Exp() ")" Statement() <ELSE> Statement())
+| (<WHILE> "(" Exp() ")" Statement())
+| (<PRINT> "(" Exp() ")" ";")
+| (Identifier() ["[" Exp() "]"] "=" Exp() ";")
+}
+
+void Exp():
+{}
+{
+  (
+      <NEW> ((<TYPE_INT> "[" Exp() "]")|(Identifier() "(" ")"))
+    | <INTEGER_LITERAL>
+    | <BOOLEAN_LITERAL>
+    | Identifier()
+    | <THIS>
+    | ("!" Exp())
+    | ("(" Exp() ")")
+  )
+  ( 
+    LOOKAHEAD(2) 
+    ( 
+        ("." (<LENGTH>|(Identifier() "(" [Exp() ("," Exp())*] ")")))
+      | ("[" Exp() "]")
+      | (<OPERATOR> Exp())
+    )
+  )*
+}
+
+void Identifier():
+{}
+{
+  <IDENTIFIER>
+}
